@@ -1,0 +1,26 @@
+# Node.js & TypeScript frontend
+node_modules/
+dist/
+build/
+.env
+*.log
+*.tsbuildinfo
+
+# VSCode settings
+.vscode/
+
+# .NET backend
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+*.db
+*.pdb
+*.cache
+*.dll
+*.exe
+
+# OS generated files
+.DS_Store
+Thumbs.db
