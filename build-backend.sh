@@ -1,8 +1,10 @@
-#!/bin/bash
-set -e
+# go to backend folder (optional)
+cd backend/backend-api
 
-cd backend
+dotnet restore BackendApi.csproj
 
-dotnet restore
-dotnet build --configuration Release --no-restore
-cd tests/BackendApi.Tests && dotnet test --no-build --verbosity normal
+# build API (Release, no restore since restored)
+dotnet build BackendApi.csproj --configuration Release --no-restore
+
+# build tests (Release, restore)
+cd ../tests && dotnet test BackendApi.Tests.csproj -c Release
