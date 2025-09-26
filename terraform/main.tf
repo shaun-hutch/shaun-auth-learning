@@ -1,8 +1,3 @@
-# Output the public IP address of the EC2 instance
-output "instance_public_ip" {
-  description = "Public IP address of the API EC2 instance"
-  value       = aws_instance.api.public_ip
-}
 terraform {
   required_providers {
     aws = {
