@@ -7,16 +7,6 @@ terraform {
   }
 }
 
-# S3 bucket for remote state
-resource "aws_s3_bucket" "tf_state" {
-  bucket        = "ap-southeast-2-shaun-terraform-workflow"
-  force_destroy = true
-  tags = {
-    Name    = "Terraform State Bucket"
-    Purpose = "Remote state for shaun-auth-learning"
-  }
-}
-
 terraform {
   required_providers {
     aws = {
@@ -52,6 +42,11 @@ data "aws_ami" "amazon_linux_2023_arm" {
       "*al2023*",
     ]
   }
+}
+
+# Data source to check if the IAM role exists
+data "aws_iam_role" "existing_ec2_ecr_access" {
+  name = "ec2-ecr-access"
 }
 
 # VPC
@@ -122,6 +117,7 @@ resource "aws_security_group" "api" {
 
 # IAM Role and instance profile so EC2 can pull from ECR
 resource "aws_iam_role" "ec2_ecr_access" {
+  count = length(data.aws_iam_role.existing_ec2_ecr_access.id) == 0 ? 1 : 0
   name = "ec2-ecr-access"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",

@@ -48,10 +48,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Ensure S3 bucket for Terraform state exists
-        run: |
-          aws s3api head-bucket --bucket ap-southeast-2-shaun-terraform-workflow || \
-          aws s3api create-bucket --bucket ap-southeast-2-shaun-terraform-workflow --region ap-southeast-2 --create-bucket-configuration LocationConstraint=ap-southeast-2
+      # - name: Ensure S3 bucket for Terraform state exists
+      #   run: |
+      #     aws s3api head-bucket --bucket ap-southeast-2-shaun-terraform-workflow || \
+      #     aws s3api create-bucket --bucket ap-southeast-2-shaun-terraform-workflow --region ap-southeast-2 --create-bucket-configuration LocationConstraint=ap-southeast-2
 
       - name: Ensure DynamoDB table for Terraform state locking exists
         run: |
@@ -63,7 +63,8 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
       # Ensure ECR repository exists before attempting to push
       - name: Ensure ECR repository exists
