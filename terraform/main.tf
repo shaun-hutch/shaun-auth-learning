@@ -16,7 +16,6 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 # Find the latest Amazon Linux 2023 ARM64 AMI for the current region.
-# This avoids hard-coding a region-specific AMI id which will not work across regions.
 data "aws_ami" "amazon_linux_2023_arm" {
   most_recent = true
   owners      = ["amazon"]
@@ -26,8 +25,6 @@ data "aws_ami" "amazon_linux_2023_arm" {
     values = ["arm64"]
   }
 
-  # Try common name patterns for Amazon Linux 2023; if your account needs a different
-  # pattern update the values accordingly.
   filter {
     name = "name"
     values = [
@@ -43,9 +40,7 @@ resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags = {
-    Name = "auth-learning-vpc"
-  }
+  tags                 = { Name = "auth-learning-vpc" }
 }
 
 # Public subnet
@@ -53,15 +48,13 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
-  tags = {
-    Name = "auth-learning-public-subnet"
-  }
+  tags                    = { Name = "auth-learning-public-subnet" }
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags = { Name = "auth-learning-igw" }
+  tags   = { Name = "auth-learning-igw" }
 }
 
 # Route Table
@@ -108,15 +101,15 @@ resource "aws_security_group" "api" {
   }
 }
 
-# IAM Role for EC2 to access ECR
+# IAM Role and instance profile so EC2 can pull from ECR
 resource "aws_iam_role" "ec2_ecr_access" {
   name = "ec2-ecr-access"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
         Principal = { Service = "ec2.amazonaws.com" }
       }
     ]
@@ -133,13 +126,12 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_ecr_access.name
 }
 
-# EC2 Instance (t4g.nano)
+# EC2 Instance (t4g.nano) that pulls the container on boot
 resource "aws_instance" "api" {
-  # Use the discovered Amazon Linux 2023 ARM64 AMI for the current region
-  ami           = data.aws_ami.amazon_linux_2023_arm.id
-  instance_type = "t4g.nano"
-  subnet_id     = aws_subnet.public.id
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  ami                    = data.aws_ami.amazon_linux_2023_arm.id
+  instance_type          = "t4g.nano"
+  subnet_id              = aws_subnet.public.id
+  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   vpc_security_group_ids = [aws_security_group.api.id]
 
   user_data = <<-EOF
@@ -148,11 +140,12 @@ resource "aws_instance" "api" {
               yum install -y docker aws-cli
               systemctl start docker
               systemctl enable docker
-              # Login to ECR and run container
-              aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com
-              docker pull ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/auth-learning-api:latest
-              docker run -d -p 80:80 ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/auth-learning-api:latest
-              EOF
+              AWS_ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F '"' '{print $4}')
+              REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F '"' '{print $4}')
+              aws ecr get-login-password --region $${REGION} | docker login --username AWS --password-stdin $${AWS_ACCOUNT_ID}.dkr.ecr.$${REGION}.amazonaws.com
+              docker pull $${AWS_ACCOUNT_ID}.dkr.ecr.$${REGION}.amazonaws.com/auth-learning-api:latest
+              docker run -d -p 80:80 $${AWS_ACCOUNT_ID}.dkr.ecr.$${REGION}.amazonaws.com/auth-learning-api:latest
+EOF
 
   tags = { Name = "auth-learning-api" }
 }
