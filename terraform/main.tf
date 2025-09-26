@@ -132,13 +132,13 @@ resource "aws_iam_role" "ec2_ecr_access" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_policy" {
-  role       = aws_iam_role.ec2_ecr_access.name
+  role       = aws_iam_role.ec2_ecr_access[count.index].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2-ecr-profile"
-  role = aws_iam_role.ec2_ecr_access.name
+  role = aws_iam_role.ec2_ecr_access[count.index].name
 }
 
 # EC2 Instance (t4g.nano) that pulls the container on boot
