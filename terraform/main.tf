@@ -1,4 +1,23 @@
 terraform {
+  backend "s3" {
+    bucket  = "ap-southeast-2-shaun-terraform-workflow"
+    key     = "state/terraform.tfstate"
+    region  = "ap-southeast-2"
+    encrypt = true
+  }
+}
+
+# S3 bucket for remote state
+resource "aws_s3_bucket" "tf_state" {
+  bucket        = "ap-southeast-2-shaun-terraform-workflow"
+  force_destroy = true
+  tags = {
+    Name    = "Terraform State Bucket"
+    Purpose = "Remote state for shaun-auth-learning"
+  }
+}
+
+terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
