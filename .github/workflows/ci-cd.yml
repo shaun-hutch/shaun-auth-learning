@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  AWS_REGION: ap-southeast-2  # Change this to your preferred region
+  AWS_REGION: us-west-1
   ECR_REPOSITORY: auth-learning-api
   TF_WORKSPACE: production
 
