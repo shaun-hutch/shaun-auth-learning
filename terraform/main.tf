@@ -44,11 +44,14 @@ data "aws_ami" "amazon_linux_2023_arm" {
   }
 }
 
+# Local variable to handle role existence check
+locals {
+  role_exists = try(data.aws_iam_role.existing_ec2_ecr_access.arn, null) != null
+}
+
 # Data source to check if the IAM role exists
 data "aws_iam_role" "existing_ec2_ecr_access" {
   name = "ec2-ecr-access"
-  # This will fail if the role doesn't exist, which is expected
-  count = try(data.aws_iam_role.existing_ec2_ecr_access.id, "") != "" ? 1 : 0
 }
 
 # VPC
@@ -121,7 +124,7 @@ resource "aws_security_group" "api" {
 
 # IAM Role and instance profile so EC2 can pull from ECR
 resource "aws_iam_role" "ec2_ecr_access" {
-  count = can(data.aws_iam_role.existing_ec2_ecr_access[0].id) ? 0 : 1
+  count = local.role_exists ? 0 : 1
   name  = "ec2-ecr-access"
 
   assume_role_policy = jsonencode({
@@ -139,14 +142,14 @@ resource "aws_iam_role" "ec2_ecr_access" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_policy" {
-  count      = can(data.aws_iam_role.existing_ec2_ecr_access[0].id) ? 0 : 1
+  count      = local.role_exists ? 0 : 1
   role       = aws_iam_role.ec2_ecr_access[count.index].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
-  role = can(data.aws_iam_role.existing_ec2_ecr_access[0].id) ? data.aws_iam_role.existing_ec2_ecr_access[0].name : aws_iam_role.ec2_ecr_access[0].name
+  role = local.role_exists ? data.aws_iam_role.existing_ec2_ecr_access.name : aws_iam_role.ec2_ecr_access[0].name
 
   tags = var.tags
 }
