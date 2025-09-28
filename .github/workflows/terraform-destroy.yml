@@ -30,9 +30,16 @@ jobs:
             -backend-config="key=state/terraform.tfstate" \
             -backend-config="region=ap-southeast-2"
 
+      - name: Get ECR Repository URI
+        id: ecr-uri
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REPO_URI="$ACCOUNT_ID.dkr.ecr.ap-southeast-2.amazonaws.com/auth-learning-api:latest"
+          echo "repo_uri=$REPO_URI" >> "$GITHUB_OUTPUT"
+
       - name: Terraform Destroy
         working-directory: terraform
-        run: terraform destroy -auto-approve
+        run: terraform destroy -auto-approve -var="ecr_image_uri=${{ steps.ecr-uri.outputs.repo_uri }}"
         env:
           TF_WORKSPACE: production
 
