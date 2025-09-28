@@ -121,7 +121,7 @@ resource "aws_security_group" "api" {
 resource "aws_iam_role" "ec2_ecr_access" {
   count = length(data.aws_iam_role.existing_ec2_ecr_access.id) == 0 ? 1 : 0
   name  = "ec2-ecr-access"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -145,7 +145,7 @@ resource "aws_iam_role_policy_attachment" "ecr_policy" {
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = length(data.aws_iam_role.existing_ec2_ecr_access.id) == 0 ? aws_iam_role.ec2_ecr_access[0].name : data.aws_iam_role.existing_ec2_ecr_access.name
-  
+
   tags = var.tags
 }
 
