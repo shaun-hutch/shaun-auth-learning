@@ -35,8 +35,8 @@ jobs:
   build-and-push-image:
     needs: build-and-test
     runs-on: ubuntu-latest
-    # Only run on main branch pushes, not PRs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on main branch pushes and manual triggers
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     
     steps:
       - uses: actions/checkout@v3
@@ -83,7 +83,7 @@ jobs:
   terraform:
     needs: build-and-push-image
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     
     steps:
       - uses: actions/checkout@v3
