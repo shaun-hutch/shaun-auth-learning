@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [ main ]
 
+# Limit to one concurrent deployment
+concurrency:
+  group: "auth-learning-pipeline"
+  cancel-in-progress: true
+
 env:
   AWS_REGION: us-west-1
   ECR_REPOSITORY: auth-learning-api
