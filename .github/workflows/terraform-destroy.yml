@@ -24,7 +24,11 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=ap-southeast-2-shaun-terraform-workflow" \
+            -backend-config="key=state/terraform.tfstate" \
+            -backend-config="region=ap-southeast-2"
 
       - name: Terraform Destroy
         working-directory: terraform
