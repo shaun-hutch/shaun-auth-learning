@@ -50,8 +50,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin ${{ steps.login-ecr.outputs.registry }}
+        uses: aws-actions/amazon-ecr-login@v1
 
       # Ensure ECR repository exists before attempting to push
       - name: Ensure ECR repository exists
@@ -108,12 +107,24 @@ jobs:
         working-directory: ./terraform
         run: terraform fmt -check
 
+      - name: Get ECR image details
+        id: ecr-details
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REPO_URI="$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
+          echo "repo_uri=$REPO_URI" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
       - name: Terraform Plan
         working-directory: ./terraform
-        run: terraform plan -no-color
+        run: |
+          terraform plan -no-color \
+          -var="ecr_image_uri=${{ steps.ecr-details.outputs.repo_uri }}:${{ steps.ecr-details.outputs.image_tag }}"
         continue-on-error: true
 
       - name: Terraform Apply
         working-directory: ./terraform
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        run: |
+          terraform apply -auto-approve \
+          -var="ecr_image_uri=${{ steps.ecr-details.outputs.repo_uri }}:${{ steps.ecr-details.outputs.image_tag }}"

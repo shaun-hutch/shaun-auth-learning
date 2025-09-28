@@ -17,7 +17,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "ap-southeast-2"
+  region = var.aws_region
 }
 
 # Data sources for region and account id
@@ -51,24 +51,24 @@ data "aws_iam_role" "existing_ec2_ecr_access" {
 
 # VPC
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags                 = { Name = "auth-learning-vpc" }
+  tags                 = merge(var.tags, { Name = "${var.project_name}-vpc" })
 }
 
 # Public subnet
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = var.public_subnet_cidr
   map_public_ip_on_launch = true
-  tags                    = { Name = "auth-learning-public-subnet" }
+  tags                    = merge(var.tags, { Name = "${var.project_name}-public-subnet" })
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "auth-learning-igw" }
+  tags   = merge(var.tags, { Name = "${var.project_name}-igw" })
 }
 
 # Route Table
@@ -78,7 +78,7 @@ resource "aws_route_table" "public" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
   }
-  tags = { Name = "auth-learning-public-rt" }
+  tags = merge(var.tags, { Name = "${var.project_name}-public-rt" })
 }
 
 # Route Table Association
@@ -89,7 +89,7 @@ resource "aws_route_table_association" "public" {
 
 # Security Group
 resource "aws_security_group" "api" {
-  name        = "auth-learning-api-sg"
+  name        = "${var.project_name}-api-sg"
   description = "Security group for API instance"
   vpc_id      = aws_vpc.main.id
 
@@ -113,12 +113,15 @@ resource "aws_security_group" "api" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = merge(var.tags, { Name = "${var.project_name}-api-sg" })
 }
 
 # IAM Role and instance profile so EC2 can pull from ECR
 resource "aws_iam_role" "ec2_ecr_access" {
   count = length(data.aws_iam_role.existing_ec2_ecr_access.id) == 0 ? 1 : 0
-  name = "ec2-ecr-access"
+  name  = "ec2-ecr-access"
+  
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -129,22 +132,27 @@ resource "aws_iam_role" "ec2_ecr_access" {
       }
     ]
   })
+
+  tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_policy" {
+  count      = length(data.aws_iam_role.existing_ec2_ecr_access.id) == 0 ? 1 : 0
   role       = aws_iam_role.ec2_ecr_access[count.index].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2-ecr-profile"
-  role = aws_iam_role.ec2_ecr_access[count.index].name
+  name = "${var.project_name}-ec2-profile"
+  role = length(data.aws_iam_role.existing_ec2_ecr_access.id) == 0 ? aws_iam_role.ec2_ecr_access[0].name : data.aws_iam_role.existing_ec2_ecr_access.name
+  
+  tags = var.tags
 }
 
 # EC2 Instance (t4g.nano) that pulls the container on boot
 resource "aws_instance" "api" {
   ami                    = data.aws_ami.amazon_linux_2023_arm.id
-  instance_type          = "t4g.nano"
+  instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   vpc_security_group_ids = [aws_security_group.api.id]
@@ -155,14 +163,15 @@ resource "aws_instance" "api" {
               yum install -y docker aws-cli
               systemctl start docker
               systemctl enable docker
-              AWS_ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep accountId | awk -F '"' '{print $4}')
               REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F '"' '{print $4}')
-              aws ecr get-login-password --region $${REGION} | docker login --username AWS --password-stdin $${AWS_ACCOUNT_ID}.dkr.ecr.$${REGION}.amazonaws.com
-              docker pull $${AWS_ACCOUNT_ID}.dkr.ecr.$${REGION}.amazonaws.com/auth-learning-api:latest
-              docker run -d -p 80:80 $${AWS_ACCOUNT_ID}.dkr.ecr.$${REGION}.amazonaws.com/auth-learning-api:latest
-EOF
+              aws ecr get-login-password --region $${REGION} | docker login --username AWS --password-stdin $(echo "${var.ecr_image_uri}" | cut -d/ -f1)
+              docker pull ${var.ecr_image_uri}
+              docker run -d -p 80:80 ${var.ecr_image_uri}
+              EOF
 
-  tags = { Name = "auth-learning-api" }
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-api"
+  })
 }
 
 output "instance_public_ip" {
