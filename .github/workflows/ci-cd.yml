@@ -51,6 +51,8 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: true
 
       # Ensure ECR repository exists before attempting to push
       - name: Ensure ECR repository exists
