@@ -43,6 +43,3 @@ jobs:
         env:
           TF_WORKSPACE: production
 
-      - name: Show Destroyed Resources
-        working-directory: terraform
-        run: terraform state list || echo "All resources destroyed."

@@ -35,6 +35,8 @@ This repository is a sandbox for learning and experimenting with basic authentic
 ## Other Notes
 - I'd like to put this in a CICD workflow, using AWS resources, with GitHub Actions.
 
+- If you startup the dotnet project, if you want to do anything else in the terminal, you will need to do it in a new window. The agent gets in a loop if you try to do everything in the same terminal window.
+
 ---
 
 **If any conventions or workflows are unclear, ask the user for clarification and update this file accordingly.**

@@ -1,14 +1,9 @@
-using Microsoft.OpenApi.Models;
+using BackendApi.Services;
 
 namespace BackendApi;
 
 public partial class Program
 {
-    private static string[] Summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -22,8 +17,15 @@ public partial class Program
 
     public static void ConfigureServices(IServiceCollection services)
     {
+        // Add controllers
+        services.AddControllers();
+        
+        // Add API documentation
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
+        
+        // Register application services
+        services.AddScoped<IWeatherService, WeatherService>();
     }
 
     public static void ConfigureApp(WebApplication app)
@@ -36,29 +38,9 @@ public partial class Program
         }
 
         app.UseHttpsRedirection();
-
-        ConfigureEndpoints(app);
+        app.UseRouting();
+        
+        // Map controllers
+        app.MapControllers();
     }
-
-    private static void ConfigureEndpoints(WebApplication app)
-    {
-        app.MapGet("/weatherforecast", () =>
-        {
-            var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    Summaries[Random.Shared.Next(Summaries.Length)]
-                ))
-                .ToArray();
-            return forecast;
-        })
-        .WithName("GetWeatherForecast");
-    }
-}
-
-public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
