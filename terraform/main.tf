@@ -105,6 +105,14 @@ resource "aws_security_group" "api" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow SSH access (port 22) from anywhere (for dev only; restrict in production)
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
