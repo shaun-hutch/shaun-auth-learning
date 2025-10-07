@@ -13,8 +13,7 @@ COPY --from=build /app/publish .
 COPY https/aspnetapp.pfx /https/aspnetapp.pfx
 EXPOSE 80
 EXPOSE 443
-# Set environment variables for ASP.NET Core to use HTTPS
 ENV ASPNETCORE_Kestrel__Endpoints__Https__Url="https://*:443"
 ENV ASPNETCORE_Kestrel__Endpoints__Https__Certificate__Path="/https/aspnetapp.pfx"
-ENV ASPNETCORE_Kestrel__Endpoints__Https__Certificate__Password="${CERT_PASSWORD}"
+# The certificate password should be set as an environment variable at container runtime, not in the Dockerfile.
 ENTRYPOINT ["dotnet", "BackendApi.dll"]

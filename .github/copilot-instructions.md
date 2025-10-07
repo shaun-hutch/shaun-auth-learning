@@ -37,6 +37,8 @@ This repository is a sandbox for learning and experimenting with basic authentic
 
 - If you startup the dotnet project, if you want to do anything else in the terminal, you will need to do it in a new window. The agent gets in a loop if you try to do everything in the same terminal window.
 
+- For changes to the GitHub Actions workflows, feel free to make the changes directly and not just suggest them. I want to see the full changes. This applies for the Dockerfile, Terraform files and Workflow files.
+
 ---
 
 **If any conventions or workflows are unclear, ask the user for clarification and update this file accordingly.**

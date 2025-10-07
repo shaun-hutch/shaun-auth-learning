@@ -76,8 +76,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Create https directory
+        run: mkdir -p ./backend/backend-api/https
+
       - name: Generate HTTPS dev cert
-        run: mkdir -p ./https && dotnet dev-certs https -ep ./https/aspnetapp.pfx -p ${{ secrets.CERT_PASSWORD }}
+        run: dotnet dev-certs https -ep ./backend/backend-api/https/aspnetapp.pfx -p ${{ secrets.CERT_PASSWORD }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -129,7 +132,8 @@ jobs:
         working-directory: ./terraform
         run: |
           terraform plan -no-color \
-          -var="ecr_image_uri=${{ steps.ecr-details.outputs.repo_uri }}:${{ steps.ecr-details.outputs.image_tag }}"
+          -var="ecr_image_uri=${{ steps.ecr-details.outputs.repo_uri }}:${{ steps.ecr-details.outputs.image_tag }}" \
+          -var="cert_password=${{ secrets.CERT_PASSWORD }}"
         continue-on-error: true
 
       - name: Terraform Apply
@@ -137,4 +141,5 @@ jobs:
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         run: |
           terraform apply -auto-approve \
-          -var="ecr_image_uri=${{ steps.ecr-details.outputs.repo_uri }}:${{ steps.ecr-details.outputs.image_tag }}"
+          -var="ecr_image_uri=${{ steps.ecr-details.outputs.repo_uri }}:${{ steps.ecr-details.outputs.image_tag }}" \
+          -var="cert_password=${{ secrets.CERT_PASSWORD }}"

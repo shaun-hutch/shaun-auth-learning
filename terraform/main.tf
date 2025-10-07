@@ -1,3 +1,4 @@
+# location of the terraform state - S3 for remote state management
 terraform {
   backend "s3" {
     bucket  = "ap-southeast-2-shaun-terraform-workflow"
@@ -7,6 +8,7 @@ terraform {
   }
 }
 
+# AWS provider
 terraform {
   required_providers {
     aws = {
@@ -44,7 +46,7 @@ data "aws_ami" "amazon_linux_2023_arm" {
   }
 }
 
-# VPC
+# VPC (Virtual Private Cloud)
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -52,7 +54,7 @@ resource "aws_vpc" "main" {
   tags                 = merge(var.tags, { Name = "${var.project_name}-vpc" })
 }
 
-# Public subnet
+# Public subnet (which facilitates internet access)
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidr
@@ -60,13 +62,13 @@ resource "aws_subnet" "public" {
   tags                    = merge(var.tags, { Name = "${var.project_name}-public-subnet" })
 }
 
-# Internet Gateway
+# Internet Gateway (for internet access)
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = merge(var.tags, { Name = "${var.project_name}-igw" })
 }
 
-# Route Table
+# Route Table (for routing internet traffic)
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   route {
@@ -76,18 +78,19 @@ resource "aws_route_table" "public" {
   tags = merge(var.tags, { Name = "${var.project_name}-public-rt" })
 }
 
-# Route Table Association
+# Route Table Association (for associating the route table with the public subnet)
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
 
-# Security Group
+# Security Group (allow HTTP and HTTPS)
 resource "aws_security_group" "api" {
   name        = "${var.project_name}-api-sg"
   description = "Security group for API instance"
   vpc_id      = aws_vpc.main.id
 
+  # Ports 80 (HTTP) and 443 (HTTPS) open to the world
   ingress {
     from_port   = 80
     to_port     = 80
@@ -158,8 +161,12 @@ resource "aws_instance" "api" {
               REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F '"' '{print $4}')
               aws ecr get-login-password --region $${REGION} | docker login --username AWS --password-stdin $(echo "${var.ecr_image_uri}" | cut -d/ -f1)
               docker pull ${var.ecr_image_uri}
-                # Run container mapping both HTTP (80) and HTTPS (443)
-                docker run -d -p 80:80 -p 443:443 ${var.ecr_image_uri}
+              # Set certificate password for dev HTTPS
+              export CERT_PASSWORD="${var.cert_password}"
+              # Run container mapping both HTTP (80) and HTTPS (443), passing password as env var
+              docker run -d -p 80:80 -p 443:443 \
+                -e ASPNETCORE_Kestrel__Endpoints__Https__Certificate__Password="$CERT_PASSWORD" \
+                ${var.ecr_image_uri}
               EOF
 
   tags = merge(var.tags, {

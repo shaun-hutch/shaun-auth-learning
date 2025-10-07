@@ -1,3 +1,8 @@
+variable "cert_password" {
+  description = "Password for the HTTPS dev certificate"
+  type        = string
+  sensitive   = true
+}
 variable "ecr_image_uri" {
   description = "The full URI of the ECR image to deploy"
   type        = string
