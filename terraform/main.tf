@@ -158,7 +158,8 @@ resource "aws_instance" "api" {
               REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F '"' '{print $4}')
               aws ecr get-login-password --region $${REGION} | docker login --username AWS --password-stdin $(echo "${var.ecr_image_uri}" | cut -d/ -f1)
               docker pull ${var.ecr_image_uri}
-              docker run -d -p 80:80 ${var.ecr_image_uri}
+                # Run container mapping both HTTP (80) and HTTPS (443)
+                docker run -d -p 80:80 -p 443:443 ${var.ecr_image_uri}
               EOF
 
   tags = merge(var.tags, {
