@@ -39,9 +39,10 @@ jobs:
 
       - name: Terraform Destroy
         working-directory: terraform
-        run: terraform destroy -auto-approve \
-          -var="ecr_image_uri=${{ steps.ecr-uri.outputs.repo_uri }}" \
-          -var="cert_password=${{ secrets.CERT_PASSWORD }}"
+        run: |
+          terraform destroy -auto-approve 
+            -var="ecr_image_uri=${{ steps.ecr-uri.outputs.repo_uri }}" 
+            -var="cert_password=${{ secrets.CERT_PASSWORD }}"
         env:
           TF_WORKSPACE: production
 
